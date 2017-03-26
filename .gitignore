@@ -1,0 +1,12 @@
+.env
+settings_local.py
+*.egg-info
+*.swp
+*.sqlite3
+*.pyc
+/static
+set_env_prod.sh
+tags
+set_env_local_secret.sh
+todo.txt
+.idea

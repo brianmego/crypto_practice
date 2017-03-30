@@ -19,8 +19,8 @@ def _hex_bytes_to_hex_str(hex_bytes: str):
     return codecs.encode(hex_bytes, 'hex').decode('utf8')
 
 
-def _xor_two_hex_byte_strings(hex_bytes_1, hex_bytes_2):
-    return bytes(x ^ y for x, y in zip(hex_bytes_1, hex_bytes_2))
+def _xor_two_byte_strings(bytes_1, bytes_2):
+    return bytes(x ^ y for x, y in zip(bytes_1, bytes_2))
 
 
 def _score_char_freq(string_to_score: str, language: str='english'):
@@ -41,7 +41,7 @@ def hex_to_base64(hex_str: str):
 def xor_two_strings(hex_str1: str, hex_str2: str):
     hex_bytes_1 = _hex_str_to_hex_bytes(hex_str1)
     hex_bytes_2 = _hex_str_to_hex_bytes(hex_str2)
-    xored_bytes = _xor_two_hex_byte_strings(hex_bytes_1, hex_bytes_2)
+    xored_bytes = _xor_two_byte_strings(hex_bytes_1, hex_bytes_2)
     hex_str = _hex_bytes_to_hex_str(xored_bytes)
     return hex_str
 
@@ -52,7 +52,7 @@ def decrypt_xor_cipher(hex_str: str):
     for char in range(256):
         char = chr(char)
         repeated_cypher = (char * len(hex_bytes_1)).encode('utf8')
-        decrypted_bytes = _xor_two_hex_byte_strings(
+        decrypted_bytes = _xor_two_byte_strings(
             hex_bytes_1,
             repeated_cypher
         )
@@ -79,3 +79,13 @@ def encrypt_repeating_key_xor(plaintext: str, key: str):
         xored_byte = key_bytes[i % len(key_bytes)] ^ plaintext_bytes[i]
         encrypted_bytes.append(xored_byte)
     return codecs.encode(bytes(encrypted_bytes), 'hex')
+
+
+def compute_hamming_distance(str_one: str, str_two: str):
+    diff = _xor_two_byte_strings(
+        str_one.encode('utf8'),
+        str_two.encode('utf8')
+    )
+    raw_bits = [format(x, 'b') for x in diff]
+    distance = sum([x.count('1') for x in raw_bits])
+    return distance

@@ -15,7 +15,8 @@ def _xor_two_byte_strings(bytes_1, bytes_2):
     return bytes(x ^ y for x, y in zip(bytes_1, bytes_2))
 
 
-def _score_char_freq(string_to_score: str, language: str='english'):
+def _score_char_freq(string_to_score: bytes, language: str='english'):
+    """Higher score means it's more likely to belong the given language"""
     score = 0
     language_char_freq = CHAR_FREQ_MAP[language] + CHAR_FREQ_MAP[language].lower()
     for char in string_to_score:
@@ -62,8 +63,7 @@ def detect_single_character_xor(list_of_hex_str: list):
     return sorted_scores[-1]
 
 
-def encrypt_repeating_key_xor(plaintext: str, key: str):
-    plaintext_bytes = plaintext.encode('utf8')
+def encrypt_repeating_key_xor(plaintext_bytes: bytes, key: str):
     key_bytes = key.encode('utf8')
     encrypted_bytes = []
     for i in range(len(plaintext_bytes)):
@@ -81,11 +81,39 @@ def compute_hamming_distance(str_one: bytes, str_two: bytes):
     distance = sum([x.count('1') for x in raw_bits])
     return distance
 
-def break_repeating_key_xor(encrypted_bytes):
-    min_keysize = 2
-    max_keysize = 40
+def break_repeating_key_xor(encrypted_bytes: bytes):
+    likely_keysizes = _determine_likely_keysizes(encrypted_bytes, 2, 40, 8)
+    options = []
+    for keysize in likely_keysizes[:3]:
+        options.append(_transpose_and_xor_blocks(encrypted_bytes, keysize[0]))
+
+    high_score = (0, None)
+    for option in options:
+        score = _score_char_freq(option)
+        if score > high_score[0]:
+            high_score = (score, option)
+
+    return high_score[1]
+
+
+def _transpose_and_xor_blocks(encrypted_bytes, keysize):
+    transposed_blocks = [[] for x in range(keysize)]
+    for i in range(len(encrypted_bytes)):
+        block_index = i % keysize
+        transposed_blocks[block_index].append(encrypted_bytes[i])
+    original_key = []
+    for block in transposed_blocks:
+        block_as_bytes = ''.join([chr(x) for x in block]).encode('utf8')
+        original_key.append(decrypt_xor_cipher(block_as_bytes)[0])
+    plaintext = encrypt_repeating_key_xor(encrypted_bytes, ''.join(original_key))
+    return binascii.unhexlify(plaintext)
+
+
+def _determine_likely_keysizes(encrypted_bytes: bytes,
+                               min_keysize: int,
+                               max_keysize: int,
+                               blocks_to_sample: int) -> list:
     keysize_distances = {}
-    blocks_to_sample = 8
     for i in range(min_keysize, max_keysize + 1):
         blocks = []
         for j in range(blocks_to_sample):
@@ -97,4 +125,4 @@ def break_repeating_key_xor(encrypted_bytes):
         normalized_for_keysize = average_distance / i
         keysize_distances[i] = normalized_for_keysize
     likely_keysizes = sorted(keysize_distances.items(), key=lambda x: x[1])
-
+    return likely_keysizes

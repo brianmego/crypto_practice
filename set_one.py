@@ -2,21 +2,13 @@
 https://cryptopals.com/sets/1
 """
 
-import codecs
 import base64
+import binascii
 
 
 CHAR_FREQ_MAP = {
     'english': 'ETAOIN SHRDLU'
 }
-
-
-def _hex_str_to_hex_bytes(hex_str: str):
-    return codecs.decode(hex_str, 'hex')
-
-
-def _hex_bytes_to_hex_str(hex_bytes: str):
-    return codecs.encode(hex_bytes, 'hex').decode('utf8')
 
 
 def _xor_two_byte_strings(bytes_1, bytes_2):
@@ -33,31 +25,30 @@ def _score_char_freq(string_to_score: str, language: str='english'):
 
 
 def hex_to_base64(hex_str: str):
-    hex_bytes = codecs.decode(hex_str, 'hex')
+    hex_bytes = binascii.a2b_hex(hex_str)
     b64_bytes = base64.b64encode(hex_bytes)
     return b64_bytes.decode()
 
 
 def xor_two_strings(hex_str1: str, hex_str2: str):
-    hex_bytes_1 = _hex_str_to_hex_bytes(hex_str1)
-    hex_bytes_2 = _hex_str_to_hex_bytes(hex_str2)
+    hex_bytes_1 = binascii.a2b_hex(hex_str1)
+    hex_bytes_2 = binascii.a2b_hex(hex_str2)
     xored_bytes = _xor_two_byte_strings(hex_bytes_1, hex_bytes_2)
-    hex_str = _hex_bytes_to_hex_str(xored_bytes)
+    hex_str = xored_bytes.hex()
     return hex_str
 
 
-def decrypt_xor_cipher(hex_str: str):
-    hex_bytes_1 = _hex_str_to_hex_bytes(hex_str)
+def decrypt_xor_cipher(hex_bytes: bytes):
     decrypted_scores = []
     for char in range(256):
         char = chr(char)
-        repeated_cypher = (char * len(hex_bytes_1)).encode('utf8')
+        repeated_cypher = (char * len(hex_bytes)).encode('utf8')
         decrypted_bytes = _xor_two_byte_strings(
-            hex_bytes_1,
+            hex_bytes,
             repeated_cypher
         )
         decrypted_scores.append(
-            (char, _score_char_freq(decrypted_bytes), decrypted_bytes, hex_str)
+            (char, _score_char_freq(decrypted_bytes), decrypted_bytes, hex_bytes.hex())
         )
     sorted_scores = sorted(decrypted_scores, key=lambda x: x[1])
     return sorted_scores[-1]
@@ -66,7 +57,7 @@ def decrypt_xor_cipher(hex_str: str):
 def detect_single_character_xor(list_of_hex_str: list):
     decrypted_scores = []
     for string in list_of_hex_str:
-        decrypted_scores.append(decrypt_xor_cipher(string))
+        decrypted_scores.append(decrypt_xor_cipher(binascii.a2b_hex(string)))
     sorted_scores = sorted(decrypted_scores, key=lambda x: x[1])
     return sorted_scores[-1]
 
@@ -78,14 +69,32 @@ def encrypt_repeating_key_xor(plaintext: str, key: str):
     for i in range(len(plaintext_bytes)):
         xored_byte = key_bytes[i % len(key_bytes)] ^ plaintext_bytes[i]
         encrypted_bytes.append(xored_byte)
-    return codecs.encode(bytes(encrypted_bytes), 'hex')
+    return bytes(encrypted_bytes).hex()
 
 
-def compute_hamming_distance(str_one: str, str_two: str):
+def compute_hamming_distance(str_one: bytes, str_two: bytes):
     diff = _xor_two_byte_strings(
-        str_one.encode('utf8'),
-        str_two.encode('utf8')
+        str_one,
+        str_two
     )
     raw_bits = [format(x, 'b') for x in diff]
     distance = sum([x.count('1') for x in raw_bits])
     return distance
+
+def break_repeating_key_xor(encrypted_bytes):
+    min_keysize = 2
+    max_keysize = 40
+    keysize_distances = {}
+    blocks_to_sample = 8
+    for i in range(min_keysize, max_keysize + 1):
+        blocks = []
+        for j in range(blocks_to_sample):
+            blocks.append(encrypted_bytes[i * j:i * (j + 1)])
+        distances = []
+        for j in range(blocks_to_sample - 1):
+            distances.append(compute_hamming_distance(blocks[j], blocks[j + 1]))
+        average_distance = sum(distances) / len(distances)
+        normalized_for_keysize = average_distance / i
+        keysize_distances[i] = normalized_for_keysize
+    likely_keysizes = sorted(keysize_distances.items(), key=lambda x: x[1])
+

@@ -1,3 +1,6 @@
+import base64
+import binascii
+import os
 import set_one
 from nose import tools
 from test.data import set_one as set_one_data
@@ -17,7 +20,7 @@ def test_xor_two_strings():
     tools.eq_(actual, expected)
 
 def test_single_byte_xor_cipher():
-    inp = '1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736'
+    inp = binascii.a2b_hex('1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736')
     actual = set_one.decrypt_xor_cipher(inp)[0]
     expected = 'X'
     tools.eq_(actual, expected)
@@ -31,12 +34,19 @@ def test_detect_byte_xor_cipher():
 def test_encrypt_with_repeating_key_xor():
     inp = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
     actual = set_one.encrypt_repeating_key_xor(inp, 'ICE')
-    expected = b'0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f'
+    expected = '0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f'
     tools.eq_(actual, expected)
 
-def test_computer_hamming_distance():
-    inp1 = 'this is a test'
-    inp2 = 'wokka wokka!!!'
+def test_compute_hamming_distance():
+    inp1 = 'this is a test'.encode('utf8')
+    inp2 = 'wokka wokka!!!'.encode('utf8')
     actual = set_one.compute_hamming_distance(inp1, inp2)
     expected = 37
     tools.eq_(actual, expected)
+
+def test_break_repeating_key_xor():
+    CUR_DIR = os.path.dirname(os.path.realpath(__file__))
+    with open('{}/data/set_one_encrypted_xor.txt'.format(CUR_DIR), 'r') as handle:
+        inp = handle.read()
+        inp = base64.b64decode(inp)
+    actual = set_one.break_repeating_key_xor(inp)

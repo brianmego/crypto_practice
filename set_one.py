@@ -4,6 +4,7 @@ https://cryptopals.com/sets/1
 
 import base64
 import binascii
+from Crypto.Cipher import AES
 
 
 CHAR_FREQ_MAP = {
@@ -94,6 +95,11 @@ def break_repeating_key_xor(encrypted_bytes: bytes):
             high_score = (score, option)
 
     return high_score[1]
+
+
+def decrypt_aes_with_ecb(encrypted_bytes: bytes, key: bytes):
+    cipher = AES.new(key, AES.MODE_ECB)
+    return cipher.decrypt(encrypted_bytes)
 
 
 def _transpose_and_xor_blocks(encrypted_bytes, keysize):

@@ -4,6 +4,7 @@ https://cryptopals.com/sets/1
 
 import base64
 import binascii
+from collections import Counter
 from Crypto.Cipher import AES
 
 
@@ -100,6 +101,16 @@ def break_repeating_key_xor(encrypted_bytes: bytes):
 def decrypt_aes_with_ecb(encrypted_bytes: bytes, key: bytes):
     cipher = AES.new(key, AES.MODE_ECB)
     return cipher.decrypt(encrypted_bytes)
+
+def calculate_identical_blocks(encrypted_bytes: bytes, keysize: int):
+    num_of_blocks = int(len(encrypted_bytes) / keysize)
+    split_blocks = Counter()
+    for block in range(num_of_blocks):
+        start_index = block * keysize
+        end_index = (block + 1) * keysize
+        split_blocks[encrypted_bytes[start_index:end_index]] += 1
+    most_count = split_blocks.most_common()[0][1]
+    return most_count
 
 
 def _transpose_and_xor_blocks(encrypted_bytes, keysize):

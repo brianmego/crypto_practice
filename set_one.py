@@ -13,7 +13,7 @@ CHAR_FREQ_MAP = {
 }
 
 
-def _xor_two_byte_strings(bytes_1, bytes_2):
+def xor_two_byte_strings(bytes_1, bytes_2):
     return bytes(x ^ y for x, y in zip(bytes_1, bytes_2))
 
 
@@ -36,7 +36,7 @@ def hex_to_base64(hex_str: str):
 def xor_two_strings(hex_str1: str, hex_str2: str):
     hex_bytes_1 = binascii.a2b_hex(hex_str1)
     hex_bytes_2 = binascii.a2b_hex(hex_str2)
-    xored_bytes = _xor_two_byte_strings(hex_bytes_1, hex_bytes_2)
+    xored_bytes = xor_two_byte_strings(hex_bytes_1, hex_bytes_2)
     hex_str = xored_bytes.hex()
     return hex_str
 
@@ -46,7 +46,7 @@ def decrypt_xor_cipher(hex_bytes: bytes):
     for char in range(256):
         char = chr(char)
         repeated_cypher = (char * len(hex_bytes)).encode('utf8')
-        decrypted_bytes = _xor_two_byte_strings(
+        decrypted_bytes = xor_two_byte_strings(
             hex_bytes,
             repeated_cypher
         )
@@ -75,7 +75,7 @@ def encrypt_repeating_key_xor(plaintext_bytes: bytes, key: str):
 
 
 def compute_hamming_distance(str_one: bytes, str_two: bytes):
-    diff = _xor_two_byte_strings(
+    diff = xor_two_byte_strings(
         str_one,
         str_two
     )
@@ -100,7 +100,16 @@ def break_repeating_key_xor(encrypted_bytes: bytes):
 
 def decrypt_aes_with_ecb(encrypted_bytes: bytes, key: bytes):
     cipher = AES.new(key, AES.MODE_ECB)
-    return cipher.decrypt(encrypted_bytes)
+    decrypted = cipher.decrypt(encrypted_bytes)
+    return remove_pkcs7_pad(decrypted)
+
+def remove_pkcs7_pad(plaintext_bytes: bytes):
+    unpadded = plaintext_bytes
+    last_byte = unpadded[-1]
+    if unpadded.endswith((chr(last_byte) * last_byte).encode()):
+        unpadded = unpadded[:last_byte * -1]
+    return unpadded
+    
 
 def calculate_identical_blocks(encrypted_bytes: bytes, keysize: int):
     num_of_blocks = int(len(encrypted_bytes) / keysize)
